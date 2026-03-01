@@ -45,13 +45,11 @@ jobs:
       pages: write # to deploy to Pages
       id-token: write # to verify the deployment originates from an appropriate source
     steps:
-      - name: GitHub Pages setup reminder
-        if: ${{ !github.event.repository.has_pages }}
+      - name: Publish GDS viewer
+        uses: TinyTapeout/tt-gds-action/viewer@ttihp26a
+
+      - name: Show viewer URL
         shell: bash
         run: |
-          echo "GitHub Pages is not enabled for this repository." >> "$GITHUB_STEP_SUMMARY"
-          echo "Enable it in Settings > Pages, then rerun this workflow to publish the GDS viewer." >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Publish GDS viewer
-        if: ${{ github.event.repository.has_pages }}
-        uses: TinyTapeout/tt-gds-action/viewer@ttihp26a
+          echo "## GDS Viewer URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> "$GITHUB_STEP_SUMMARY"

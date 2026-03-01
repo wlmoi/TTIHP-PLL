@@ -9,9 +9,12 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install iverilog
+      - name: Install iverilog 13
         shell: bash
-        run: sudo apt-get update && sudo apt-get install -y iverilog
+        run: |
+          wget https://github.com/TinyTapeout/iverilog/releases/download/13.0-git-d8c3c51/iverilog_13.0-git-d8c3c51a-1_amd64.deb
+          sudo apt-get update
+          sudo apt install -y ./iverilog_13.0-git-d8c3c51a-1_amd64.deb
 
       # Set Python up and install cocotb
       - name: Setup python

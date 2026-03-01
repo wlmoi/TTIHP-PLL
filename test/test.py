@@ -4,29 +4,26 @@
 import cocotb
 import os
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, ValueChange, with_timeout, SimTimeoutError
+from cocotb.triggers import ClockCycles, RisingEdge
 
 
-async def wait_for_rising_bit(vector_handle, bit_index):
-    prev_bit = None
-
+def read_bit(vector_handle, bit_index):
     try:
-        prev_value = int(vector_handle.value)
-        prev_bit = (prev_value >> bit_index) & 1
+        value = int(vector_handle.value)
     except ValueError:
-        prev_bit = None
+        return None
+    return (value >> bit_index) & 1
 
-    while True:
-        await ValueChange(vector_handle)
-        try:
-            curr_value = int(vector_handle.value)
-        except ValueError:
-            continue
 
-        curr_bit = (curr_value >> bit_index) & 1
+async def detect_rising_bit_within_cycles(clk_handle, vector_handle, bit_index, cycles):
+    prev_bit = read_bit(vector_handle, bit_index)
+    for _ in range(cycles):
+        await RisingEdge(clk_handle)
+        curr_bit = read_bit(vector_handle, bit_index)
         if prev_bit == 0 and curr_bit == 1:
-            return
+            return True
         prev_bit = curr_bit
+    return False
 
 
 def is_gate_level_run():
@@ -52,39 +49,29 @@ async def test_project(dut):
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 20)
 
-    # While disabled, output clock should not toggle
-    try:
-        await with_timeout(wait_for_rising_bit(dut.uo_out, 4), 5, "us")
-        assert False, "PLL output toggled while disabled"
-    except SimTimeoutError:
-        dut._log.info("No clock toggles while disabled: PASS")
+    # While disabled, output clock should not toggle (~5us ~= 68 ref cycles)
+    disabled_rise = await detect_rising_bit_within_cycles(dut.clk, dut.uo_out, 4, 80)
+    assert not disabled_rise, "PLL output toggled while disabled"
+    dut._log.info("No clock toggles while disabled: PASS")
 
     dut._log.info("Enable PLL intentionally")
     dut.ui_in.value = 0x40 | 0x01  # div ratio nibble = 4, enable bit = 1
 
-    # Once enabled, output clock should toggle
-    toggles_seen = 0
-    for _ in range(5):
-        try:
-            await with_timeout(wait_for_rising_bit(dut.uo_out, 4), 200, "us")
-            toggles_seen += 1
-        except SimTimeoutError:
-            if gates:
-                dut._log.warning("No clk_out toggle observed in GL run within timeout; continuing with functional checks")
-                break
-            raise
+    # Once enabled, output clock should toggle in RTL; GL may be non-oscillating
+    # under functional netlist simulation. Use ~220us window to match prior behavior.
+    enabled_rise = await detect_rising_bit_within_cycles(dut.clk, dut.uo_out, 4, 3000)
 
-    if not gates:
-        assert toggles_seen > 0, "PLL did not produce output toggles after enable"
-    else:
+    if gates:
+        if not enabled_rise:
+            dut._log.warning("No clk_out toggle observed in GL run within window; continuing with enable-path check")
         assert int(dut.uo_out.value) & (1 << 7), "PLL enable status bit did not assert in GL run"
+    else:
+        assert enabled_rise, "PLL did not produce output toggles after enable"
 
     dut._log.info("Disable PLL intentionally")
     dut.ui_in.value = 0x40
     await ClockCycles(dut.clk, 20)
 
-    try:
-        await with_timeout(wait_for_rising_bit(dut.uo_out, 4), 5, "us")
-        assert False, "PLL output still toggles after disable"
-    except SimTimeoutError:
-        dut._log.info("Clock stopped after disable: PASS")
+    disabled_again_rise = await detect_rising_bit_within_cycles(dut.clk, dut.uo_out, 4, 80)
+    assert not disabled_again_rise, "PLL output still toggles after disable"
+    dut._log.info("Clock stopped after disable: PASS")

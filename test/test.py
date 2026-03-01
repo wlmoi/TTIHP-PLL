@@ -3,8 +3,7 @@
 
 import cocotb
 import os
-from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge, with_timeout, SimTimeoutError
 
 
 def read_bit(vector_handle, bit_index):
@@ -36,9 +35,10 @@ async def test_project(dut):
     gates = is_gate_level_run()
     dut._log.info("Start PLL enable/disable behavior test")
 
-    # 13.56MHz reference clock
-    clock = Clock(dut.clk, 73.746, unit="ns")
-    cocotb.start_soon(clock.start())
+    try:
+        await with_timeout(RisingEdge(dut.clk), 2, "us")
+    except SimTimeoutError:
+        assert False, "Reference clock is not toggling in testbench"
 
     dut._log.info("Apply reset and keep PLL disabled")
     dut.ena.value = 1

@@ -23,6 +23,10 @@ module tb ();
   wire [7:0] uio_out;
   wire [7:0] uio_oe;
 
+  // 13.56MHz reference clock
+  initial clk = 1'b0;
+  always #36.873 clk = ~clk;
+
   tt_um_william_pll user_project (
       .ui_in  (ui_in),    // Dedicated inputs
       .uo_out (uo_out),   // Dedicated outputs

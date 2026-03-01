@@ -9,20 +9,21 @@ module phase_frequency_detector (
 );
 
     reg up_ff, down_ff;
-    wire rst_pfd_n;
 
-    assign rst_pfd_n = reset_n & ~(up_ff & down_ff);
-
-    always @(posedge ref_clk or negedge rst_pfd_n) begin
-        if (!rst_pfd_n) begin
+    always @(posedge ref_clk or negedge reset_n) begin
+        if (!reset_n) begin
+            up_ff <= 1'b0;
+        end else if (down_ff) begin
             up_ff <= 1'b0;
         end else begin
             up_ff <= 1'b1;
         end
     end
 
-    always @(posedge fb_clk or negedge rst_pfd_n) begin
-        if (!rst_pfd_n) begin
+    always @(posedge fb_clk or negedge reset_n) begin
+        if (!reset_n) begin
+            down_ff <= 1'b0;
+        end else if (up_ff) begin
             down_ff <= 1'b0;
         end else begin
             down_ff <= 1'b1;

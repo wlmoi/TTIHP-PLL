@@ -1,5 +1,4 @@
 `default_nettype none
-`timescale 1ps/1ps
 
 module vco_digital_model #(
     parameter CENTER_FREQ = 54_240_000,

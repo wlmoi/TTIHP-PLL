@@ -3,38 +3,47 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge, with_timeout
+from cocotb.result import SimTimeoutError
 
 
 @cocotb.test()
 async def test_project(dut):
-    dut._log.info("Start")
+    dut._log.info("Start PLL enable/disable behavior test")
 
-    # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 10, unit="us")
+    # 13.56MHz reference clock
+    clock = Clock(dut.clk, 73.746, unit="ns")
     cocotb.start_soon(clock.start())
 
-    # Reset
-    dut._log.info("Reset")
+    dut._log.info("Apply reset and keep PLL disabled")
     dut.ena.value = 1
     dut.ui_in.value = 0
     dut.uio_in.value = 0
     dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
+    await ClockCycles(dut.clk, 20)
     dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 20)
 
-    dut._log.info("Test project behavior")
+    # While disabled, output clock should not toggle
+    try:
+        await with_timeout(RisingEdge(dut.uo_out[4]), 5, "us")
+        assert False, "PLL output toggled while disabled"
+    except SimTimeoutError:
+        dut._log.info("No clock toggles while disabled: PASS")
 
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
+    dut._log.info("Enable PLL intentionally")
+    dut.ui_in.value = 0x40 | 0x01  # div ratio nibble = 4, enable bit = 1
 
-    # Wait for one clock cycle to see the output values
-    await ClockCycles(dut.clk, 1)
+    # Once enabled, output clock should toggle
+    for _ in range(5):
+        await with_timeout(RisingEdge(dut.uo_out[4]), 200, "us")
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
+    dut._log.info("Disable PLL intentionally")
+    dut.ui_in.value = 0x40
+    await ClockCycles(dut.clk, 20)
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+    try:
+        await with_timeout(RisingEdge(dut.uo_out[4]), 5, "us")
+        assert False, "PLL output still toggles after disable"
+    except SimTimeoutError:
+        dut._log.info("Clock stopped after disable: PASS")

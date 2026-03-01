@@ -6,13 +6,22 @@ SIM ?= icarus
 FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = project.v
+PROJECT_SOURCES = \
+	project.v \
+	pll_smartcard_top.v \
+	phase_frequency_detector.v \
+	digital_charge_pump_ctrl.v \
+	loop_filter.v \
+	vco_digital_model.v \
+	frequency_divider.v \
+	lock_detector.v
 
 ifneq ($(GATES),yes)
 
 # RTL simulation:
 SIM_BUILD				= sim_build/rtl
 VERILOG_SOURCES += $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
+COMPILE_ARGS    += -DVCO_BEHAVIORAL
 
 else
 

@@ -3,8 +3,29 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, RisingEdge, with_timeout
-from cocotb.result import SimTimeoutError
+from cocotb.triggers import ClockCycles, ValueChange, with_timeout, SimTimeoutError
+
+
+async def wait_for_rising_bit(vector_handle, bit_index):
+    prev_bit = None
+
+    try:
+        prev_value = int(vector_handle.value)
+        prev_bit = (prev_value >> bit_index) & 1
+    except ValueError:
+        prev_bit = None
+
+    while True:
+        await ValueChange(vector_handle)
+        try:
+            curr_value = int(vector_handle.value)
+        except ValueError:
+            continue
+
+        curr_bit = (curr_value >> bit_index) & 1
+        if prev_bit == 0 and curr_bit == 1:
+            return
+        prev_bit = curr_bit
 
 
 @cocotb.test()
@@ -26,7 +47,7 @@ async def test_project(dut):
 
     # While disabled, output clock should not toggle
     try:
-        await with_timeout(RisingEdge(dut.uo_out[4]), 5, "us")
+        await with_timeout(wait_for_rising_bit(dut.uo_out, 4), 5, "us")
         assert False, "PLL output toggled while disabled"
     except SimTimeoutError:
         dut._log.info("No clock toggles while disabled: PASS")
@@ -36,14 +57,14 @@ async def test_project(dut):
 
     # Once enabled, output clock should toggle
     for _ in range(5):
-        await with_timeout(RisingEdge(dut.uo_out[4]), 200, "us")
+        await with_timeout(wait_for_rising_bit(dut.uo_out, 4), 200, "us")
 
     dut._log.info("Disable PLL intentionally")
     dut.ui_in.value = 0x40
     await ClockCycles(dut.clk, 20)
 
     try:
-        await with_timeout(RisingEdge(dut.uo_out[4]), 5, "us")
+        await with_timeout(wait_for_rising_bit(dut.uo_out, 4), 5, "us")
         assert False, "PLL output still toggles after disable"
     except SimTimeoutError:
         dut._log.info("Clock stopped after disable: PASS")

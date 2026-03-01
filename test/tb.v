@@ -27,6 +27,14 @@ module tb ();
   initial clk = 1'b0;
   always #36.873 clk = ~clk;
 
+  // Initialize driven inputs to avoid X-propagation at t=0
+  initial begin
+    rst_n = 1'b0;
+    ena = 1'b0;
+    ui_in = 8'h00;
+    uio_in = 8'h00;
+  end
+
   tt_um_william_pll user_project (
       .ui_in  (ui_in),    // Dedicated inputs
       .uo_out (uo_out),   // Dedicated outputs

@@ -18,7 +18,7 @@ async def detect_rising_bit_within_time(vector_handle, bit_index, window_ns, sam
     prev_bit = read_bit(vector_handle, bit_index)
     steps = max(1, int(window_ns // sample_step_ns))
     for _ in range(steps):
-        await Timer(sample_step_ns, units="ns")
+        await Timer(sample_step_ns, unit="ns")
         curr_bit = read_bit(vector_handle, bit_index)
         if prev_bit == 0 and curr_bit == 1:
             return True
@@ -41,9 +41,9 @@ async def test_project(dut):
     dut.ui_in.value = 0
     dut.uio_in.value = 0
     dut.rst_n.value = 0
-    await Timer(2, units="us")
+    await Timer(2, unit="us")
     dut.rst_n.value = 1
-    await Timer(2, units="us")
+    await Timer(2, unit="us")
 
     # While disabled, output clock should not toggle
     disabled_rise = await detect_rising_bit_within_time(dut.uo_out, 4, 6000)
@@ -66,7 +66,7 @@ async def test_project(dut):
 
     dut._log.info("Disable PLL intentionally")
     dut.ui_in.value = 0x40
-    await Timer(2, units="us")
+    await Timer(2, unit="us")
 
     disabled_again_rise = await detect_rising_bit_within_time(dut.uo_out, 4, 6000)
     assert not disabled_again_rise, "PLL output still toggles after disable"

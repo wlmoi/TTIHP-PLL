@@ -61,7 +61,7 @@ module vco_digital_model #(
     end
 `else
     always @(*) begin
-        clk_out = 1'b0;
+        clk_out = enable & reset_n & 1'b0;
     end
 
     wire _unused = &{ctrl_voltage, CENTER_FREQ, KVCO, VDD, CALIB_NUM, CALIB_DEN, 1'b0};

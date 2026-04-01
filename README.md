@@ -4,6 +4,7 @@
 
 - Top module: `tt_um_william_pll`
 - Language: Verilog
+- Target shuttle: SKY26a (`sky130A`, digital tile)
 - Project docs: [docs/info.md](docs/info.md)
 
 ## Creator

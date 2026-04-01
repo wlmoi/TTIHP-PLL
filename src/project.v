@@ -9,6 +9,11 @@ module tt_um_william_pll (
   input  wire       ena,
   input  wire       clk,
   input  wire       rst_n
+`ifdef USE_POWER_PINS
+  ,
+  input  wire       VPWR,
+  input  wire       VGND
+`endif
 );
 
   wire pll_enable;
@@ -61,5 +66,11 @@ module tt_um_william_pll (
   assign uio_out[3:0] = 4'b0;
 
   assign uio_oe = 8'b11110000;
+
+  // Keep lint clean for intentionally unused control bits.
+  wire _unused = &{ui_in[3:1], uio_in[7:4], 1'b0};
+`ifdef USE_POWER_PINS
+  wire _unused_power = &{VPWR, VGND, 1'b0};
+`endif
 
 endmodule
